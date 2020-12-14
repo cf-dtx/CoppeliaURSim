@@ -1,4 +1,4 @@
-# Coppelia_UR_plugin
+# CoppeliaURSim
 
 This is a plugin that allows you to visualize Universal Robots programs in the CoppeliaSim simulator. You can find a setup guide and an example below.
 
