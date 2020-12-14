@@ -1,0 +1,75 @@
+cmake_minimum_required(VERSION 3.5)
+project (simExtRTDE)
+# COMPILATION FLAGS
+
+#BOOST
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost 1.64.0)
+if(Boost_FOUND)
+	INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+	LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})	
+endif()
+
+#RTDE
+find_package(ur_rtde REQUIRED)
+
+#COPPELIA
+if(NOT LIBPLUGIN_DIR)
+    if(DEFINED ENV{COPPELIASIM_ROOT_DIR})
+        set(LIBPLUGIN_DIR $ENV{COPPELIASIM_ROOT_DIR}/programming/libPlugin)
+    else()
+        set(LIBPLUGIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../libPlugin)
+    endif()
+endif()
+set(CMAKE_MODULE_PATH
+    ${CMAKE_MODULE_PATH}
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
+    ${LIBPLUGIN_DIR}/cmake)
+find_package(CoppeliaSim 4.0.0.4 REQUIRED)
+
+#INCLUDE DIRECTORIES AND SOURCE DIRECTORIES
+include_directories(${COPPELIASIM_INCLUDE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external)
+
+include_directories(coppelia/include)
+include_directories(coppelia/include/stack)
+include_directories(include)
+
+add_subdirectory(include)
+add_subdirectory(coppelia/common)
+add_subdirectory(src)
+
+
+coppeliasim_generate_stubs(${CMAKE_CURRENT_BINARY_DIR}/generated XML_FILE
+    ${CMAKE_CURRENT_SOURCE_DIR}/callbacks.xml
+    LUA_FILE
+    ${CMAKE_CURRENT_SOURCE_DIR}/simExtPluginSkeletonNG.lua)
+
+#configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
+#    ${CMAKE_CURRENT_BINARY_DIR}/config.h
+#    ESCAPE_QUOTES)
+
+#project source, include and resource files
+set( HEADER_FILES
+        ${coppelia_plugin_hdr}
+        ${rtde_client_hdr}
+        simExtRTDE.h
+)
+
+set( SOURCE_FILES
+        ${coppelia_plugin_src}
+        ${rtde_client_src}
+        simExtRTDE.cpp
+)
+
+set(RTDE_SRCS
+    ${HEADER_FILES}
+    ${SOURCE_FILES}
+)
+
+add_library(${PROJECT_NAME} SHARED ${RTDE_SRCS})
+
+#link to which libs
+target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${COPPELIASIM_LIBRARIES} ur_rtde::rtde)
+install(TARGETS ${PROJECT_NAME} DESTINATION $ENV{COPPELIASIM_ROOT_DIR})
