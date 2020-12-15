@@ -4,7 +4,7 @@ project (simExtRTDE)
 
 #BOOST
 set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost 1.64.0)
+find_package(Boost)
 if(Boost_FOUND)
 	INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 	LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})	
@@ -25,7 +25,7 @@ set(CMAKE_MODULE_PATH
     ${CMAKE_MODULE_PATH}
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
     ${LIBPLUGIN_DIR}/cmake)
-find_package(CoppeliaSim 4.0.0.4 REQUIRED)
+find_package(CoppeliaSim REQUIRED)
 
 #INCLUDE DIRECTORIES AND SOURCE DIRECTORIES
 include_directories(${COPPELIASIM_INCLUDE_DIR})

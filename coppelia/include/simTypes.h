@@ -1,6 +1,8 @@
 #if !defined(SIMTYPES_INCLUDED_)
 #define SIMTYPES_INCLUDED_
 
+#include <cstddef>
+
 // Various types used in the interface functions:
 typedef unsigned char simBool;
 typedef char simChar;
@@ -35,7 +37,7 @@ struct SShapeVizInfo
     simInt textureRes[2];
     simFloat* textureCoords;
     simInt textureApplyMode;
-    simInt textureOptions;
+    simInt textureOptions; /* not just textures options */
 };
 
 struct SLuaCallBack
@@ -59,6 +61,19 @@ struct SLuaCallBack
     simInt scriptID;
     simDouble* inputDouble;
     simDouble* outputDouble;
+};
+
+struct SSyncMsg
+{
+    unsigned char msg;
+    void* data;
+    size_t dataSize;
+};
+
+struct SSyncRt
+{
+    unsigned char objTypes[3];
+    int objHandles[3];
 };
 
 typedef int (*contactCallback)(int,int,int,int*,float*);

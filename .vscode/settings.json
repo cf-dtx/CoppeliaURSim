@@ -1,0 +1,11 @@
+{
+  "files.associations": {
+    "*.world": "xml",
+    "*.ipynb": "jupyter",
+    "deque": "cpp",
+    "string": "cpp",
+    "vector": "cpp",
+    "mixinvector": "cpp",
+    "fast_back_stack": "cpp"
+  }
+}

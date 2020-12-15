@@ -28,20 +28,21 @@
 class RTDEclient
 {
 public:
-    RTDEclient();
+  RTDEclient();
 
 private:
-    std::string getIP();
+  std::string getIP();
 
 public:
-    bool getJoints(std::vector<double> &q);
+  bool getJoints(std::vector<double> &q);
+  bool getDigitalIO(uint8_t io_id);
+  void setDigitalIO(uint8_t io_id, bool signal);
 
 private:
-    std::string m_ip;
-    std::unique_ptr<ur_rtde::RTDEReceiveInterface> m_ircv;
-    std::unique_ptr<ur_rtde::RTDEControlInterface> m_ictrl;
-    std::unique_ptr<ur_rtde::RTDEIOInterface> m_iio;
-
+  std::string m_ip;
+  std::unique_ptr<ur_rtde::RTDEReceiveInterface> m_ircv;
+  // std::unique_ptr<ur_rtde::RTDEControlInterface> m_ictrl;
+  std::unique_ptr<ur_rtde::RTDEIOInterface> m_iio;
 };
 
 #endif //RTDE_CLIENT_H
