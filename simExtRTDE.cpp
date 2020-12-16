@@ -34,29 +34,29 @@ static LIBRARY simLib; // the CoppelisSim library that we will dynamically load 
 using namespace std;
 
 static unique_ptr<RTDEclient> ptr_rtde_client;
-static unique_ptr<RobotInterface> ptr_robot;
+static unique_ptr<RobotInterface> ptr_robot_interface;
 
 static bool plugin_loaded = false;
 static bool connected = false;
 
 static int cycle_count = 0;
 
-bool simExtGetRobotHandles(Robot &robot)
+bool simExtGetRobotHandles(std::shared_ptr<Robot> ptr_robot)
 {
   //Get robot handles
-  int rhandle = simGetObjectHandle(robot.name.c_str());
+  int rhandle = simGetObjectHandle(ptr_robot->name.c_str());
   if (rhandle != -1)
   {
-    robot.handle = rhandle;
+    ptr_robot->handle = rhandle;
     //Get robot joint handles
-    for (size_t i = 0; i < robot.dofs; ++i)
+    for (size_t i = 0; i < ptr_robot->dofs; ++i)
     {
       //Get handle for ith joint
-      string jname = robot.name + "_joint" + std::to_string(i + 1);
+      string jname = ptr_robot->name + "_joint" + std::to_string(i + 1);
       int jhandle = simGetObjectHandle(jname.c_str());
       if (jhandle != -1)
       {
-        robot.jhandles.push_back(jhandle);
+        ptr_robot->jhandles.push_back(jhandle);
       }
       else
       {
@@ -73,18 +73,18 @@ bool simExtGetRobotHandles(Robot &robot)
   return true;
 }
 
-bool simExtGetJointLimits(Robot &robot)
+bool simExtGetJointLimits(std::shared_ptr<Robot> ptr_robot)
 {
   simBool cyclic;
   float limits[2]; //[0] minimum, [1] range
-  robot.jplim.resize(robot.dofs);
-  robot.jvlim.resize(robot.dofs);
-  for (int i = 0; i < robot.dofs; ++i)
+  ptr_robot->jplim.resize(ptr_robot->dofs);
+  ptr_robot->jvlim.resize(ptr_robot->dofs);
+  for (int i = 0; i < ptr_robot->dofs; ++i)
   {
     //Get position limits
-    if (simGetJointInterval(robot.jhandles[i], &cyclic, limits) != -1)
+    if (simGetJointInterval(ptr_robot->jhandles[i], &cyclic, limits) != -1)
     {
-      robot.jplim[i] = std::pair<double, double>(limits[0], limits[0] + limits[1]);
+      ptr_robot->jplim[i] = std::pair<double, double>(limits[0], limits[0] + limits[1]);
     }
     else
     {
@@ -93,9 +93,9 @@ bool simExtGetJointLimits(Robot &robot)
     }
     //Get velocity limits
     float parameter;
-    if (simGetObjectFloatParameter(robot.jhandles[i], sim_jointfloatparam_upper_limit, &parameter) == 1)
+    if (simGetObjectFloatParameter(ptr_robot->jhandles[i], sim_jointfloatparam_upper_limit, &parameter) == 1)
     {
-      robot.jvlim[i] = parameter;
+      ptr_robot->jvlim[i] = parameter;
     }
     else
     {
@@ -187,18 +187,12 @@ void LUA_INIT_CALLBACK(SScriptCallBack *p)
     plugin_loaded = true;
 
     // Create RobotInterface
-    ptr_robot = make_unique<RobotInterface>();
-    ptr_robot->InitRobot();
+    ptr_robot_interface = make_unique<RobotInterface>();
+    ptr_robot_interface->InitRobot();
 
     // Create RTDEclient
-    ptr_rtde_client = make_unique<RTDEclient>();
-    simAddStatusbarMessage("RTDE Loaded");
-
-    // Get Robot and Joint Handles
-    simExtGetRobotHandles(ptr_robot->ur10);
-    simExtGetJointLimits(ptr_robot->ur10);
-
-    // TODO: Guarantee joints are passive
+    ptr_rtde_client = make_unique<RTDEclient>(ptr_robot_interface->m_rtde);
+    simAddStatusbarMessage("RTDE Interface initialized");
   }
 }
 
@@ -219,9 +213,31 @@ void LUA_CONNECT_CALLBACK(SScriptCallBack *p)
   {
     if (plugin_loaded)
     {
-      connected = true;
+      bool success = false;
+      try
+      {
+        success = ptr_rtde_client->RTDEconnect();
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << '\n';
+      }
 
-      simAddStatusbarMessage("RTDE Connected");
+      if (success)
+      {
+        connected = true;
+        simAddStatusbarMessage("RTDE Connected");
+
+        // Get Robot and Joint Handles
+        simExtGetRobotHandles(ptr_robot_interface->m_ur10);
+        simExtGetJointLimits(ptr_robot_interface->m_ur10);
+
+        // TODO: Guarantee joints are passive
+      }
+
+      CStackArray outArguments;
+      outArguments.pushBool(success);
+      outArguments.buildOntoStack(stack);
     }
     else
     {
@@ -247,9 +263,16 @@ void LUA_DISCONNECT_CALLBACK(SScriptCallBack *p)
   {
     if (plugin_loaded)
     {
-      connected = false;
+      bool success = ptr_rtde_client->RTDEdisconnect();
+      if (success)
+      {
+        connected = false;
+        simAddStatusbarMessage("RTDE Disconnected");
+      }
 
-      simAddStatusbarMessage("RTDE Disconnected");
+      CStackArray outArguments;
+      outArguments.pushBool(success);
+      outArguments.buildOntoStack(stack);
     }
     else
     {
@@ -281,9 +304,6 @@ void LUA_GET_IO_CALLBACK(SScriptCallBack *p)
       CStackArray outArguments;
       outArguments.pushBool(signal);
       outArguments.buildOntoStack(stack);
-
-      string msg = "Got IO" + std::to_string(io_id) + ": " + std::to_string(signal);
-      simAddStatusbarMessage(msg.c_str());
     }
     else
     {
@@ -312,9 +332,6 @@ void LUA_SET_IO_CALLBACK(SScriptCallBack *p)
       int io_id = inArguments.getInt(0);
       bool signal = inArguments.getBool(1);
       ptr_rtde_client->setDigitalIO(io_id, signal);
-
-      string msg = "Set IO" + std::to_string(io_id) + ": " + std::to_string(signal);
-      simAddStatusbarMessage(msg.c_str());
     }
     else
     {
@@ -473,9 +490,9 @@ SIM_DLLEXPORT void *simMessage(int message, int *auxiliaryData, void *customData
           std::vector<double> cjpos;
           if (ptr_rtde_client->getJoints(cjpos))
           {
-            for (int j = 0; j < ptr_robot->ur10.dofs; ++j)
+            for (int j = 0; j < ptr_robot_interface->m_ur10->dofs; ++j)
             {
-              simSetJointPosition(ptr_robot->ur10.jhandles[j], cjpos[j]);
+              simSetJointPosition(ptr_robot_interface->m_ur10->jhandles[j], cjpos[j]);
             }
           }
         }

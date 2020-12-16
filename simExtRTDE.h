@@ -5,16 +5,15 @@
 #include <vector>
 
 #ifdef _WIN32
-    #define SIM_DLLEXPORT extern "C" __declspec(dllexport)
+#define SIM_DLLEXPORT extern "C" __declspec(dllexport)
 #else
-    #define SIM_DLLEXPORT extern "C"
+#define SIM_DLLEXPORT extern "C"
 #endif
 
-
 // The 3 required entry points of the CoppelisSim plugin:
-SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt);
+SIM_DLLEXPORT unsigned char simStart(void *reservedPointer, int reservedInt);
 SIM_DLLEXPORT void simEnd();
-SIM_DLLEXPORT void* simMessage(int message,int* auxiliaryData,void* customData,int* replyData);
+SIM_DLLEXPORT void *simMessage(int message, int *auxiliaryData, void *customData, int *replyData);
 
 /*!
  * Guaranteeing the Coppelia standard API functions are always called from the VRep main thread.
@@ -26,8 +25,8 @@ SIM_DLLEXPORT void* simMessage(int message,int* auxiliaryData,void* customData,i
  * robots, end-effectors or surgical trajectories.
  */
 
-bool simExtGetRobotHandles(Robot &robot);
-bool simExtGetJointLimits(Robot &robot);
+bool simExtGetRobotHandles(std::shared_ptr<Robot> ptr_robot);
+bool simExtGetJointLimits(std::shared_ptr<Robot> ptr_robot);
 
 bool simExtGetJointPositions(const std::vector<int> &jhandles, std::vector<double> &pos);
 bool simExtGetJointVelocities(const std::vector<int> &jhandles, std::vector<double> &vel);
